@@ -1,0 +1,311 @@
+#!/bin/sh
+#
+# /etc/init.d/ufdb
+#
+# ufdbGuard is copyrighted (C) 2005-2011 by URLfilterDB with all rights reserved.
+#
+# stop/start the URLfilterDB daemons
+#
+# All *nix flavors have different mechanisms for
+# stop/start scripts to give feedback and it is not supported.
+# So this script tries to give a simple and usable feedback
+# with the echo command only.
+#
+# This script should be in /etc/init.d, /sbin/init.d or equivalent.
+# From rc3.d there should be symbolic links to this script.
+# Suggested names to use in rc3.d are K02ufdb and S50ufdb.
+#
+# $Id: ufdb.sh.in,v 1.13 2011/04/13 19:39:31 root Exp root $
+
+
+# if /etc/sysconfig/ufdbguard exist, always use that file to set
+# options and do not edit this script.
+#
+if [ -r /etc/sysconfig/ufdbguard ]
+then
+   . /etc/sysconfig/ufdbguard
+else
+   CONFIGDIR="@ufdb_config@"
+   BINDIR="@prefix@/bin"
+
+   # Optional parameters
+   # -T for test mode
+   # -N to prevent analysis of uncategorised URLs (not recommended)
+   UFDB_OPTIONS=""	
+
+   # Optionally use a non-root account to run the ufdbguardd and ufdbhttpd daemons
+   RUNAS="@ufdb_user@"
+
+   # On some systems, regeluar expression matching is much faster with LANG=C
+   LANG=C
+   export LANG
+fi
+
+who=`whoami`
+msg=""
+
+# On some systems the C library has a malloc implementation which perform
+# allocation checks and this has a performance penalty. We disable the checks.
+unset MALLOC_CHECK_	# glibc
+unset MALLOC_OPTIONS	# BSD
+unset MALLOCTYPE	# AIX
+unset MALLOCOPTIONS	# AIX
+unset MALLOCDEBUG	# AIX
+unset UMEM_DEBUG	# Solaris
+unset MALLOC_DEBUG      # Solaris
+
+KERNEL=`uname -s`
+case "$KERNEL" in
+    *NetBSD*)
+        PSALL="-al" ;;
+    *FreeBSD*)
+        PSALL="-axj" ;;
+    *OpenBSD*)
+        PSALL="-axj" ;;
+    *)
+        # Linux and others
+        PSALL="-ef" ;;
+esac
+
+case "$1" in
+	start)
+		msg="Starting URLfilterDB daemons"
+		if [ "$who" = root  -a  "$RUNAS" != ""  -a  "$RUNAS" != root ]
+		then
+		   UFDB_RUNAS_PARAM="-U $RUNAS"
+		else
+		   UFDB_RUNAS_PARAM=""
+	        fi
+		$BINDIR/ufdbguardd $UFDB_OPTIONS $UFDB_RUNAS_PARAM -c $CONFIGDIR/ufdbGuard.conf
+		exitcode=$?
+
+		# delay to prevent startup retries by ufdbgclient/squid and
+		# to give ufdbguardd time to initialize.
+		sleep 2		
+		;;
+
+	stop)
+		msg="Shutting down URLfilterDB daemons"
+
+		PIDS=""
+		if [ -f /var/tmp/ufdbguardd.pid ]
+		then
+		   PIDS=`cat /var/tmp/ufdbguardd.pid`
+		   CHECK=`ps -p "$PIDS" 2>/dev/null | grep ufdbguardd`
+		   if [ "$CHECK" = "" ]
+		   then 
+		      PIDS=""
+		   fi
+	        fi
+		if [ "$PIDS" = "" ]
+		then
+		   PIDS=`ps $PSALL | grep ufdbguardd | grep -v grep | awk '{ print $2 }' `
+		fi
+
+		exitcode=0
+		if [ "$PIDS" != "" ]
+		then
+		   kill -TERM $PIDS
+		   exitcode=$?
+		   sleep 1
+		   # kill -TERM $PIDS 2>/dev/null
+	        fi
+
+		sleep 1    # give the daemon some time to do its shutdown procedure
+
+		PIDS=""
+		if [ -f /var/tmp/ufdbhttpd.pid ]
+		then
+		   PIDS=`cat /var/tmp/ufdbhttpd.pid`
+		   CHECK=`ps -p "$PIDS" 2>/dev/null | grep ufdbhttpd`
+		   if [ "$CHECK" = "" ]
+		   then 
+		      PIDS=""
+		   fi
+	        fi
+		if [ "$PIDS" = "" ]
+		then
+		   PIDS=`ps $PSALL | grep ufdbhttpd | grep -v grep | awk '{ print $2 }' `
+		fi
+
+		exitcode=0
+		if [ "$PIDS" != "" ]
+		then
+		   kill -TERM $PIDS
+		   exitcode=$?
+		   # sleep 1
+		   # kill -TERM $PIDS 2>/dev/null
+	        fi
+
+		rm -f /tmp/ufdbguardd-[0-9][0-9][0-9][0-9][0-9]
+		;;
+
+	kill)
+		msg="Killing URLfilterDB daemons"
+
+		PIDS=""
+		if [ -f /var/tmp/ufdbguardd.pid ]
+		then
+		   PIDS=`cat /var/tmp/ufdbguardd.pid`
+		   CHECK=`ps -p "$PIDS" 2>/dev/null | grep ufdbguardd`
+		   if [ "$CHECK" = "" ]
+		   then 
+		      PIDS=""
+		   fi
+	        fi
+		if [ "$PIDS" = "" ]
+		then
+		   PIDS=`ps $PSALL | grep ufdbguardd | grep -v grep | awk '{ print $2 }' `
+		fi
+
+		if [ "$PIDS" != "" ]
+		then
+		   kill -KILL $PIDS
+		   exitcode=$?
+		   rm -f /var/tmp/ufdbguardd.pid
+	        fi
+
+		PIDS=""
+		if [ -f /var/tmp/ufdbhttpd.pid ]
+		then
+		   PIDS=`cat /var/tmp/ufdbhttpd.pid`
+		   CHECK=`ps -p "$PIDS" 2>/dev/null | grep ufdbhttpd`
+		   if [ "$CHECK" = "" ]
+		   then 
+		      PIDS=""
+		   fi
+	        fi
+		if [ "$PIDS" = "" ]
+		then
+		   PIDS=`ps $PSALL | grep ufdbhttpd | grep -v grep | awk '{ print $2 }' `
+		fi
+
+		if [ "$PIDS" != "" ]
+		then
+		   kill -KILL $PIDS
+		   exitcode=$?
+		   rm -f /var/tmp/ufdbhttpd.pid
+	        fi
+
+		rm -f /tmp/ufdbguardd-[0-9][0-9][0-9][0-9][0-9]
+		;;
+
+	reconfig|reload)
+		PIDS=""
+		if [ -f /var/tmp/ufdbguardd.pid ]
+		then
+		   PIDS=`cat /var/tmp/ufdbguardd.pid`
+		   CHECK=`ps -p "$PIDS" 2>/dev/null | grep ufdbguardd`
+		   if [ "$CHECK" = "" ]
+		   then 
+		      PIDS=""
+		   fi
+	        fi
+		if [ "$PIDS" = "" ]
+		then
+		   PIDS=`ps $PSALL | grep ufdbguardd | grep -v grep | awk '{ print $2 }' `
+		fi
+
+		if [ "$PIDS" != "" ]
+		then
+		   echo "Sending HUP signal to URLfilterDB daemons to reconfigure"
+		   kill -HUP $PIDS
+	        fi
+		exitcode=0
+		;;
+
+	rotatelog)
+		PIDS=""
+		if [ -f /var/tmp/ufdbguardd.pid ]
+		then
+		   PIDS=`cat /var/tmp/ufdbguardd.pid`
+		   CHECK=`ps -p "$PIDS" 2>/dev/null | grep ufdbguardd`
+		   if [ "$CHECK" = "" ]
+		   then 
+		      PIDS=""
+		   fi
+	        fi
+		if [ "$PIDS" = "" ]
+		then
+		   PIDS=`ps $PSALL | grep ufdbguardd | grep -v grep | awk '{ print $2 }' `
+		fi
+
+		if [ "$PIDS" != "" ]
+		then
+		   if tty -s 
+		   then
+		      echo "Sending USR1 signal to URLfilterDB daemons to rotate the log file"
+		   fi
+		   kill -USR1 $PIDS
+	        fi
+		exitcode=0
+		;;
+
+	monitor)
+		PIDS=""
+		if [ -f /var/tmp/ufdbguardd.pid ]
+		then
+		   PIDS=`cat /var/tmp/ufdbguardd.pid`
+		   CHECK=`ps -p "$PIDS" 2>/dev/null | grep ufdbguardd`
+		   if [ "$CHECK" = "" ]
+		   then 
+		      PIDS=""
+		   fi
+	        fi
+		if [ "$PIDS" = "" ]
+		then
+		   PIDS=`ps $PSALL | grep ufdbguardd | grep -v grep | awk '{ print $2 }' `
+		fi
+
+		if [ "$PIDS" != "" ]
+		then
+		   if tty -s 
+		   then
+		      echo "Sending USR2 signal to URLfilterDB daemons to trigger monitoring update"
+		   fi
+		   kill -USR2 $PIDS
+	        fi
+		exitcode=0
+		;;
+
+	condrestart|try-restart|restart)
+		$0 stop
+		sleep 2
+		$0 start
+		exitcode=$?
+		;;
+
+	status)
+		# Redhat/Fedora guidelines for exit codes:
+		# 0:	program is running or service is OK
+		# 1:	program is dead and /var/run pid file exists
+		# 2:	program is dead and /var/lock lock file exists
+		# 3:	program is not running
+		echo "Checking for URLfilterDB daemons"
+		PROC=`ps $PSALL | grep -e ufdbguardd | grep -v grep`
+		if [ "$PROC" = "" ]
+		then
+		   exitcode=3
+	        else
+		   exitcode=0
+		fi
+		;;
+
+	*)
+		echo "Usage: $0 <start|stop|status|restart|condrestart|try-restart|monitor|reconfig|rotatelog|kill>"
+		exit 1
+		;;
+esac
+
+if [ "$msg" != "" ]
+then
+   if [ $exitcode -eq 0 ]
+   then
+      echo "$msg OK"
+   else
+      echo "$msg FAIL"
+   fi
+fi
+
+exit $exitcode
+

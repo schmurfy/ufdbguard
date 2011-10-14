@@ -1,0 +1,361 @@
+/*
+ * ufdbGuard is copyrighted (C) 2005-2010 by URLfilterDB with all rights reserved.
+ *
+ * Parts of the ufdbGuard daemon are based on squidGuard.
+ * squidGuard is copyrighted (C) 1998 by
+ * ElTele Øst AS, Oslo, Norway, with all rights reserved.
+ * 
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License (version 2) as
+ * published by the Free Software Foundation.  It is distributed in the
+ * hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ * PURPOSE.  See the GNU General Public License (GPL) for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * (GPL) along with this program.
+ *
+ * $Id: sg.h.in,v 1.44 2010/11/26 11:56:34 root Exp root $
+ */
+
+#ifndef _REENTRANT
+#define _REENTRANT
+#endif
+
+#ifndef _XOPEN_SOURCE
+#ifdef __sun
+#if __STDC_VERSION__ - 0 >= 199901L
+#define _XOPEN_SOURCE 600
+#else
+#define _XOPEN_SOURCE 600
+#endif
+#else
+#define _XOPEN_SOURCE  600
+#endif
+#endif
+
+#if 0
+#ifndef _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED  1
+#endif
+#endif
+
+#if 0
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L
+#endif
+#endif
+
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE 1
+#endif
+
+#define YY_NEVER_INTERACTIVE 1
+
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <time.h>
+#include <sys/types.h>
+
+#include "config.h"
+
+#include "version.h"
+
+#include "ufdb.h"
+#include "ufdblib.h"
+
+#if __STDC__
+# ifndef __P
+#  define __P(x) x
+# endif
+#else
+# ifndef __P
+#  define __P(x) ()
+# endif
+# ifndef const
+#  define const
+# endif
+int tolower();
+#endif
+
+#ifndef ulong
+# define ulong unsigned long
+#endif
+
+#define T_WEEKLY      1
+#define T_WEEKDAY     2
+#define T_TVAL        3
+#define T_DVAL        4
+#define T_DVALCRON    5
+
+#define ACL_TYPE_DEFAULT    1
+#define ACL_TYPE_TERMINATOR 2
+#define ACL_TYPE_INADDR     3
+
+#define MAX_BUF 8192
+
+#define INVALID_IP_ADDR 1
+
+#define SG_IPTYPE_HOST  1
+#define SG_IPTYPE_RANGE 2
+#define SG_IPTYPE_CIDR  3
+#define SG_IPTYPE_CLASS 4
+
+#define SG_BLOCK_DESTINATION 1
+#define SG_BLOCK_SOURCE      2
+#define SG_BLOCK_REWRITE     3
+#define SG_BLOCK_ACL         4
+
+#define REDIRECT_PERMANENT   "301:"
+#define REDIRECT_TEMPORARILY "302:"
+
+extern char progname[];
+
+
+struct LogFile {
+  char * parent_name;
+  int    parent_type;
+  int    anonymous;
+  struct LogFileStat * stat;
+};
+
+struct SquidQueue {
+  struct SquidInfo *  squidInfo;
+  struct SquidQueue * next;
+};
+
+struct UserQuotaInfo {
+  time_t time;
+  time_t last;
+  int    consumed;
+  int    status;
+};
+#define UDFB_Q_STAT_FIRSTTIME  0
+#define UDFB_Q_STAT_ACTIVE     1
+#define UDFB_Q_STAT_TIMEISUP   2
+
+struct UserQuota {
+  time_t seconds;
+  int    renew;
+  time_t sporadic;
+};
+
+struct SquidInfo 
+{
+   char               protocol[16];
+   char               method[16];
+   int                dot;  		/* true if domain is in dot notation */
+   UFDBrevURL *       revUrl;
+   struct UserQuota * quota;
+   int                port;
+   struct Source *    lastActiveSource;
+   struct AclDest *   aclpass;
+   int		      blockReason;
+   char               url2display[1024];
+   char               domain[MAX_BUF];
+   char               orig_domain[MAX_BUF];
+   char               url[MAX_BUF];
+   char               orig[MAX_BUF];
+   char               surl[MAX_BUF];	
+   char               src[MAX_BUF];
+   char               srcDomain[MAX_BUF];
+   char               ident[256];
+   char               urlgroup[256];
+};
+
+
+struct sgRewrite {
+  char * name;
+  int    active;
+  struct ufdbRegExp * rewrite;
+  struct Time * time;
+  int    within;
+  struct sgRewrite * next;
+};
+
+#define SGDBTYPE_DOMAINLIST 1
+#define SGDBTYPE_URLLIST 2
+#define SGDBTYPE_USERLIST 3
+
+struct sgDb {
+  char *   dbhome;
+  void *   dbcp;
+  int      entries;	
+  int      type;
+};
+
+struct Ip {
+  int           type;
+  int           net_is_set;
+  unsigned long net;
+  int           mask;
+  char *        str;
+  struct Ip *   next;
+};
+
+struct Setting {
+  char *           name;
+  char *           value;
+  struct Setting * next;
+};
+
+struct TimeElement {
+  int  wday;
+  int  from;
+  int  to;
+  int  y;
+  int  m;
+  int  d;
+  time_t fromdate;
+  time_t todate;
+  struct TimeElement *next;
+};
+
+struct Time {
+  char * name;
+  int    active;
+  struct TimeElement * element;
+  struct Time * next;
+};
+
+struct Category 
+{
+  char *               name;
+  int                  active;
+  char *               domainlist;
+  struct sgDb *        domainlistDb;
+  char *               cse;		/* category-specific extension */
+  char *               expressionlist;
+  struct ufdbRegExp *  regExp;
+  struct sgRewrite *   rewrite;
+  char *               redirect;
+  int                  options;
+  struct Time *        time;
+  int                  within;
+  struct Category *    next;
+};
+
+struct Source 
+{
+  char *            name;
+  int               active;
+  struct Ip *       ip;
+  struct Ip *       lastip;
+  struct sgDb *     domainDb;
+  struct sgDb *     userDb;
+  struct Time *     time;
+  int               within;
+  int               cont_search;
+  struct UserQuota  userquota;
+  struct Source *   next;
+};
+
+
+
+struct Acl {
+  char * name;
+  int    active;
+  struct Source * source;
+  struct AclDest * pass;
+  int    rewriteDefault;
+  struct sgRewrite * rewrite;
+  char * redirect;
+  struct Time * time;
+  int    within;
+  struct Acl * next;
+};
+
+struct AclDest {
+  char * name;
+  struct Category * dest;
+  int    access;
+  int    type;
+  struct AclDest * next;
+};
+
+extern int lineno;
+
+char * sgParseRedirect	__P(( char *, struct SquidInfo *, struct Acl *, struct AclDest *, char *, int ));
+int    UFDBCheckACLaccess  __P(( struct Source *, struct Acl *, struct SquidInfo *, char * ));
+
+void   sgReadConfig __P((char *));
+void   sgReloadConfig __P((void));
+
+int    parseLine __P(( UFDBthreadAdmin *, char *, struct SquidInfo * ));
+
+void   sgHandlerSigHUP __P((int));
+void   sgSignalHandler __P((int));
+void   sgAlarm __P((int));
+ulong * sgConvDot __P(( char *, ulong * ));
+
+void   ufdbSourceUser __P((char *));
+void   ufdbSourceUserList __P((char *));
+
+void   sgSource __P((char *));
+void   sgSourceEnd __P((void));
+void   sgSourceDomain __P((char *));
+void   sgSourceIpList __P((char *));
+struct Source * sgSourceFindName __P(( char * ));
+struct Source * sgFindSource __P(( struct Source *, char *, struct SquidInfo * ));
+void   sgSourceTime __P((char *, int));
+
+void   ufdbCategory __P((char *));
+void   ufdbCategoryEnd __P((void));
+void   ufdbCategoryDomainList __P((char *));
+void   ufdbCategoryUrlList __P((char *));
+void   ufdbCategoryCACerts __P((char *));
+void   ufdbCategoryExpressionList __P((char *, char *));
+void   ufdbCategoryRedirect __P((char *));
+void   ufdbCategoryRewrite __P((char *));
+struct Category * ufdbCategoryFindName __P((char *));
+void   ufdbCategoryTime __P((char *, int));
+void   ufdbCategoryOption __P(( int, int ));
+
+void   sgSetting __P((char *, char *));
+struct Setting *sgSettingFindName __P((char *));
+char   *sgSettingGetValue __P((char *));
+
+void   sgRewrite __P((char *));
+void   sgRewriteSubstitute __P((char *));
+struct sgRewrite *sgRewriteFindName __P((char *));
+char * sgRewriteExpression __P(( struct sgRewrite *, char *, char * ));
+void   sgRewriteTime __P((char *, int));
+
+void   sgTime __P((char *));
+struct Time * sgTimeFindName __P((char *));
+void   sgTimeElementInit __P((void));
+void   sgTimeElementSortEvents __P((void));
+void   sgTimeElementAdd __P((char *, char));
+void   sgTimeElementEnd __P((void));
+void   sgTimeElementClone __P((void));
+
+void   sgSetIpType __P((int, char *, int));
+void   sgIp __P((char *));
+struct Ip *sgIpLast __P((struct Source *));
+
+void   sgAcl __P((char *, char *, int));
+struct Acl *sgAclFindName __P((char *));
+void   sgAclSetValue __P((char *,char *,int));
+struct Acl *sgAclCheckSource __P((struct Source *));
+
+char * ufdbRegExpSubst __P(( struct ufdbRegExp *, char *, char * ));
+
+void   sgDbInit __P((struct sgDb * Db, char * file));
+void   sgDbLoadTextFile __P((struct sgDb *, char *, int));
+void   sgDbUpdate __P((struct sgDb *, char *, char *, size_t));
+
+time_t date2sec __P((char *));
+time_t iso2sec __P((char *));
+void   niso __P(( time_t, char * ));
+struct UserQuotaInfo * setuserquota __P(( struct UserQuotaInfo * ));
+void sgSourceUserQuota __P((char *, char *, char *));
+
+char * sgStrdup __P(( const char * ));
+
+int    defined __P((struct sgDb *, char *, char **));
+int    sgDbLookup __P((struct sgDb *, char *, char **));
+
+void   yyerror __P((char *));
+int    yyparse __P((void));
+int    yylex __P((void));

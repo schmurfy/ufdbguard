@@ -1,0 +1,150 @@
+ADS
+
+Advertisements and web page counters.
+Ads are often putting a high load on proxy servers and available bandwidth.
+
+
+P2P
+
+peer-to-peer file sharing and file upload/download sites.
+Usually contain illegal copies of movies/shows, warez, nudity etc.
+
+
+PROXIES
+
+Sites that can be used to download content of other sites.
+Proxies are used in an attempt to circumvent a URL filter.
+URL rewrting sites.
+
+
+ADULT
+
+Sites suitable for adults only (not only sexual content).
+
+
+WAREZ
+
+illegal software, illegal software codes, hackers sites.
+
+
+ILLEGAL
+
+illegal acts
+
+
+VIOLENCE
+
+violent behaviour.
+
+
+GAMBLING
+
+gambling
+
+
+DRUGS
+
+hard drugs, soft drugs, penis enlargement drugs, medicins
+
+
+WEBMAIL
+
+private email accessible with a web browser.
+
+
+DATING
+
+Love, dating, romantic poetry, and friend sites.
+
+
+CHAT
+
+IRC and chat
+
+
+FORUM
+
+sites where people exchange non-business information.
+
+
+PRIVATE
+
+Blogs and sites of private persons, private web disk, private file stores,
+
+
+AUDIO-VIDEO
+
+audio and video streams (a tv station is usually in the entertainment category).
+
+
+SPORTS
+
+sports
+
+
+FINANCE
+
+banks, insurance companies, stock markets, stock brokers
+
+
+JOBS
+
+job applications
+
+
+GAMES
+
+games and sites about games
+
+
+ENTERTAIN
+
+Entertainment, lifestyle, hobby, arts, museums, food, restaurants, fashion, electronic cards, 
+magazines, horoscopes, desktop wallpapers, clip art, fotos, portals, events, 
+fansites, meditation, baby-related, child sites, file sharing,
+religion, non-business private interest.
+
+
+SHOPS
+
+shops, price comparisons, and auctions aimed at consumers (b2b is excluded).
+vendors of consumer products.
+
+
+TOOLBARS
+
+Google toolbar and many other toolbars.  
+Toolbars are often putting a high load on proxy servers and available bandwidth.
+Any site that potentially puts private or company files on the internet.
+
+
+TRAVEL
+
+travel agencies, airliners, tourism sites, hotels, holiday resorts
+
+
+NEWS
+
+news, opinions
+
+
+CHECKED
+
+URLs that are verified not to be part of any category and hence always
+allowed by the URL filter.  This is a "hidden" category that is used 
+to track uncategorised URLs.
+
+
+URLs may be part of 2 categories, e.g. www.usatoday.com is news while 
+www.usatoday.com/sport is in news and sport.
+The nature of the content is more important than the sctrict definition,
+so an advertisement with a nude person is classified as adult rather
+than advertisement, and a forum about games is classified as games
+rather than a forum.
+
+The general impression is also taken into account when a site is categorised.
+For example, most buyers at ebay.com are consumers rather than business users
+and therefore ebay.com is considered to be a shop for consumers and part
+of the shops category.
+
+

@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# copy_user_params
+#
+# part of ufdbUpdate installation:
+# copy the username and password from the existing ufdbUpdate file to the new file
+# so that when the new ufdbUpdate is installed, the updates keep on working.
+#
+# usage: copy_user_params <existing-ufdb-update> <new-ufdb-update>
+#
+# $Id: copy_user_params,v 1.8 2007/11/26 15:30:02 root Exp root $
+
+OLDCONFIG="$1"
+NEWCONFIG="$2"
+
+if [ ! -f $OLDCONFIG ]
+then
+   echo
+   echo "  ***  Make sure you set DOWNLOAD_USER and DOWNLOAD_PASSWORD in $OLDCONFIG"
+   echo "  ***  During the evaluation period you may use the demo username/password."
+   echo "  ***  ____________________________________________________________________"
+   echo
+   exit 0
+fi
+
+eval `grep '^DOWNLOAD_USER=' $OLDCONFIG`
+eval `grep '^DOWNLOAD_PASSWORD=' $OLDCONFIG`
+eval `grep '^UFDB_TOPDIR=' $OLDCONFIG`
+eval `grep '^BLACKLIST_DIR=' $OLDCONFIG`
+eval `grep '^PROXY_USER=' $OLDCONFIG`
+eval `grep '^PROXY_PASSWORD=' $OLDCONFIG`
+eval `grep '^NOTIFY_UFDBGUARDD=' $OLDCONFIG`
+eval `grep '^SYSLOG_FACILITY=' $OLDCONFIG`
+
+if [ "$UFDB_TOPDIR" != "" ]
+then
+   BLACKLIST_DIR=$UFDB_TOPDIR/$BLACKLIST_DIR
+fi
+
+sed -e "s,^DOWNLOAD_USER=\"\",DOWNLOAD_USER=\"$DOWNLOAD_USER\"," \
+    -e "s,^DOWNLOAD_PASSWORD=\"\",DOWNLOAD_PASSWORD=\"$DOWNLOAD_PASSWORD\"," \
+    -e "s,^BLACKLIST_DIR=.*,BLACKLIST_DIR=\"$BLACKLIST_DIR\"   # subdirectory of UFDB_TOPDIR," \
+    -e "s,^PROXY_USER=.*,PROXY_USER=\"$PROXY_USER\"            # if the download must go via an authenticating proxy," \
+    -e "s,^PROXY_PASSWORD=.*,PROXY_PASSWORD=\"$PROXY_PASSWORD\"," \
+    -e "s,^NOTIFY_UFDBGUARDD=.*,NOTIFY_UFDBGUARDD=\"$NOTIFY_UFDBGUARDD\"        # send HUP signal to ufdbguardd," \
+    -e "s,^SYSLOG_FACILITY=.*,SYSLOG_FACILITY=\"$SYSLOG_FACILITY\"        # errors/warnings in system log have this facility name," \
+    < $NEWCONFIG > ufdbUpdate.upd.tmp
+mv ufdbUpdate.upd.tmp $NEWCONFIG
+
+if [ "$DOWNLOAD_USER" = "" ]
+then
+   echo
+   echo "  ***  Make sure you set DOWNLOAD_USER and DOWNLOAD_PASSWORD in $OLDCONFIG"
+   echo "  ***  During the evaluation period you may use the demo username/password."
+   echo "  ***  ____________________________________________________________________"
+   echo
+   exit 0
+fi
+
+exit 0
+

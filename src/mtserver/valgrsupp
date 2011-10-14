@@ -1,0 +1,416 @@
+{
+   libcrypto-value4
+   Memcheck:Value4
+   fun:*
+   obj:/lib/libcrypto.so.0.9.8e
+}
+
+{
+   libcrypto-cond
+   Memcheck:Cond
+   fun:*
+   obj:/lib/libcrypto.so.0.9.8e
+}
+
+{
+   openssl-cond
+   Memcheck:Cond
+   fun:*
+   obj:/lib/libssl.so.0.9.8e
+}
+
+{
+   openssl-value4
+   Memcheck:Value4
+   obj:/lib/libssl.so.0.9.8e
+   fun:*
+}
+
+{
+   pthread-cond
+   Addrcheck,Memcheck:Cond
+   fun:*
+   obj:/lib/libpthread-2.5.so
+}
+
+{
+   pthread-value4
+   Addrcheck,Memcheck:Value4
+   fun:*
+   obj:/lib/libpthread-2.5.so
+}
+
+{
+   pthread-param
+   Memcheck:Param
+   write(buf)
+   fun:write
+   obj:/lib/libpthread-2.5.so
+}
+
+{
+   pthread-core
+   PThread:core
+   fun:*
+   obj:/lib/libpthread-2.5.so
+}
+
+{
+   crypto-DES-01
+   Memcheck:Value4
+   fun:DES_encrypt2
+}
+
+{
+   crypto-AES-01
+   Memcheck:Value4
+   fun:AES_set_encrypt_key
+}
+
+{
+   crypto-AES-02
+   Memcheck:Value4
+   fun:AES_encrypt
+}
+
+{
+   crypto-AES-03
+   Memcheck:Value4
+   fun:AES_decrypt
+}
+
+{
+   crypto-AES-04
+   Memcheck:Cond
+   fun:tls1_enc
+}
+
+{
+   crypto-AES-05
+   Memcheck:Cond
+   fun:RSA_verify
+}
+
+#{
+#   crypto-AES-06
+#   Memcheck:Param
+#   fun:AES_set_decrypt_key
+#}
+
+{
+   crypto-AES-07
+   Memcheck:Cond
+   fun:SHA1_Update
+}
+
+{
+   crypto-AES-08
+   Memcheck:Cond
+   fun:SHA1_Final
+}
+
+{
+   crypto-AES-09
+   Memcheck:Value4
+   fun:SHA1_Final
+}
+
+{
+   crypto-AES-10
+   Memcheck:Cond
+   fun:ssl3_get_record
+}
+
+{
+   crypto-AES-11
+   Memcheck:Value4
+   fun:ssl3_get_record
+}
+
+{
+   crypto-AES-12
+   Memcheck:Cond
+   fun:ssl3_read_bytes
+#  obj:/lib/libssl.so.0.9.8e
+}
+
+{
+   crypto-AES-12b
+   Memcheck:Value4
+   fun:ssl3_read_bytes
+#  obj:/lib/libssl.so.0.9.8e
+}
+
+{
+   crypto-AES-13
+   Memcheck:Cond
+   fun:ssl3_get_message
+}
+
+{
+   crypto-AES-14
+   Memcheck:Cond
+   fun:BUF_MEM_grow_clean
+}
+
+{
+   crypto-AES-15
+   Memcheck:Cond
+   fun:MD5_Update
+}
+
+{
+   crypto-AES-16
+   Memcheck:Cond
+   fun:ssl3_get_finished
+}
+
+{
+   crypto-AES-17
+   Memcheck:Cond
+   fun:ssl3_write
+}
+
+{
+   SSL-memleak-01
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:OPENSSL_config
+#  obj:/lib/libcrypto.so.0.9.8e
+}
+
+{
+   SSL-memleak-02a
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:SSL_CTX_new
+}
+
+{
+   SSL-memleak-02b
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:SSL_CTX_new
+}
+
+{
+   SSL-memleak-03
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:SSL_library_init
+#  obj:/lib/libssl.so.0.9.8e
+}
+
+{
+   SSL-memleak-04a
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:OpenSSL_add_all_ciphers
+}
+
+{
+   SSL-memleak-04b
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:OpenSSL_add_all_ciphers
+}
+
+{
+   SSL-memleak-05a
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:SSL_load_error_strings
+}
+
+{
+   SSL-memleak-05b
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:SSL_load_error_strings
+}
+
+{
+   SSL-memleak-06
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:ENGINE_load_builtin_engines
+#  obj:/lib/libcrypto.so.0.9.8e
+}
+
+{
+   SSL-memleak-07a
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:SSL_CTX_load_verify_locations
+}
+
+{
+   SSL-memleak-07b
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:SSL_CTX_load_verify_locations
+}
+
+{
+   SSL-memleak-08a
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:SSL_CTX_set_default_verify_paths
+}
+
+{
+   SSL-memleak-08b
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:SSL_CTX_set_default_verify_paths
+}
+
+{
+   SSL-memleak-09a
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:ssl_verify_cert_chain
+   ...
+   fun:SSL_connect
+}
+
+{
+   SSL-memleak-09b
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:ssl_verify_cert_chain
+   ...
+   fun:SSL_connect
+}
+
+
+{
+   SSL-memleak-10
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:OpenSSL_add_all_digests
+}
+
+{
+   SSL-memleak-11
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:DH_new_method
+}
+
+{
+   pthread-memleak-12a
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:pthread_cancel
+}
+
+{
+   pthread-memleak-12b
+   Memcheck:Leak
+   fun:calloc
+   ...
+   fun:pthread_cance*
+}
+
+{
+   pthread-memleak-13
+   Memcheck:Leak
+   fun:calloc
+   ...
+   fun:pthread_creat*
+}
+
+{
+   verified-alloc-01
+   Memcheck:Leak
+   fun:calloc
+   fun:UFDBallocThreadAdmin
+}
+
+{
+   verified-alloc-02
+   Memcheck:Leak
+   fun:malloc
+   fun:yy_flex_alloc
+}
+
+{
+   verified-alloc-03
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:insertHTTPScache
+}
+
+{
+   verified-alloc-04
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:UFDBinsertHashtable
+}
+
+{
+   verified-alloc-05
+   Memcheck:Leak
+   fun:calloc
+   ...
+   fun:expandHashtable
+}
+
+{
+   verified-alloc-06
+   Memcheck:Leak
+   fun:calloc
+   fun:worker_main
+}
+
+{
+   verified-alloc-07
+   Memcheck:Leak
+   fun:malloc
+   fun:UFDBcreateHashtable
+}
+
+{
+   parser-parameter-leak-01
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:ufdbSetting
+}
+
+{
+   libc-regcomp-leak-a
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:regcomp,regexec
+}
+
+{
+   libc-regcomp-leak-b
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:regcomp,regexec
+}

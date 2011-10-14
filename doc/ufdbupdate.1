@@ -1,0 +1,31 @@
+.\" man page for ufdbupdate
+.TH UFDBUPDATE "1" "08/04/2010" "Release 1.26" "Release 1.26"
+.\"
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.SH "NAME"
+\fBufdbUpdate\fR \- download a URL database
+.SH "SYNOPSIS"
+.HP 9
+\fBufdbUpdate\fR [\fI\-v\fR]
+.SH "DESCRIPTION"
+.PP
+\fBufdbUpdate\fR downloads a new URL database and signals
+\fBufdbguardd\fR to load it.
+.PP
+\fBufdbUpdate\fR is normally called by cron.
+See also \fIcrontab(1)\fR and the ufdbGuard Reference Manual 
+for more details.
+.SH "OPTIONS"
+.TP
+\fB\-v\fR
+give a verbose output of all steps.
+.PP
+.SH "SEE ALSO"
+.PP
+ufdbguardd(1), ReferenceManual_1_26.pdf, 
+\fIhttp://www.urlfilterdb.com/en/downloads/documentation.html\fR.
+.SH "AUTHOR"
+The developers of URLfilterDB \- http://www.urlfilterdb.com

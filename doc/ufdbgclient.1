@@ -1,0 +1,43 @@
+.\" man page for ufdbgclient
+.TH UFDBGCLIENT "1" "08/04/2010" "Release 1.26" "Release 1.26"
+.\"
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.SH "NAME"
+\fBufdbgclient\fR \- a helper for ufdbguardd
+.SH "SYNOPSIS"
+.HP 9
+\fBufdbgclient\fR [\fI-l <logdir>\fR] [\fI-S <servername>\fR] [\fI-p <port>\fR] [\fI-C\fR]
+.SH "DESCRIPTION"
+.PP
+\fBufdbgclient\fR is a helper between squid and ufdbguardd.
+The only purpose of ufdbgclient is to pass URL rewriter requests
+from squid to the ufdbguardd daemon and pass the results back.
+.PP
+\fBufdbgclient\fR is normally not called from the command line
+but directly by squid.
+.PP
+There exists an extensive Reference Manual for \fBufdbGuard\fR
+with sections for installation and configuration.
+.SH "OPTIONS"
+.TP
+\fB\-l <logdir>\fR
+specify in which directory the log file \fIufdbgclient.log\fR will be stored.
+.TP
+\fB-S <servername>\fR
+if ufdbguardd does not run on the same system, specify the hostname of the server.
+.TP
+\fB-p <port>\fR
+specify the port number (default: 3977) where ufdbguardd listens to ufdbgclient.
+.TP 
+\fB-C\fI
+tell ufdbgclient that the Squid parameter \fIurl_rewrite_concurrency\fR was set.
+Note: consult the helpdesk of URLfilterDB before using this parameter.
+.SH "SEE ALSO"
+.PP
+ufdbguardd(1), ReferenceManual_1_26.pdf, 
+\fIhttp://www.urlfilterdb.com/en/downloads/documentation.html\fR.
+.SH "AUTHOR"
+The developers of URLfilterDB \- http://www.urlfilterdb.com

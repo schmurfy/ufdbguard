@@ -1,0 +1,223 @@
+#!/bin/sh
+#
+# ufdbGrab - grab info about the OS, libc, squid and ufdbGuard config
+#
+# The output is meant to be send to support@urlfilterdb.com in case that
+# there are severe errors with ufdbGuard.
+#
+# RCS: $Id: ufdbGrab,v 1.18 2011/06/22 17:57:32 root Exp root $
+
+if [ $# -ne 2 ]
+then
+   echo "usage: ufdbGrab <config-dir> <log-dir>"
+   exit 1
+fi
+
+TMPDIR=${TMPDIR:-/tmp}
+export TMPDIR
+
+echo "*** warning: temporary space in $TMPDIR is used"
+echo "    If you run out of space, set the environment variable TMPDIR"
+echo "    to a location where you have enough space."
+echo
+
+CONFDIR="$1"
+LOGDIR="$2"
+
+VERSION="$Revision: 1.18 $"
+VERSION=${VERSION#* }
+VERSION=${VERSION% *}
+
+function echolog
+{
+   echo "$*"
+   echo "$*" >> $TT/log
+}
+
+function logcmd
+{
+   echo >> $TT/log
+   echolog "running command $* ..."
+   eval $* >> $TT/log 2>&1
+}
+
+function trycopyfile
+{
+   file="$1"
+   compress="${2:-yes}"
+   if [ -f "$file" ]
+   then
+      echolog "Copying $file ..."
+      if [ "$compress" = yes ]
+      then
+         gzip < $file > $TT/`basename $file`.gz
+      else
+	 cp $file $TT/`basename $file`
+      fi
+   fi
+}
+
+TTDIR=ufdbGrab.$$
+TT=$TMPDIR/$TTDIR
+rm -f $TT/log
+
+mkdir $TT
+if [ ! -d $TT ]
+then
+   echo "cannot create temporary directory $TT"
+   exit 1
+fi
+
+echolog "ufdbGrab version $VERSION with config=$CONFDIR log=$LOGDIR"
+logcmd "ls -l $CONFDIR"
+ETCDIR=$CONFDIR
+
+if [ -d $CONFDIR/etc ]
+then
+   logcmd "ls -l $CONFDIR/etc"
+   ETCDIR=$CONFDIR/etc
+fi
+
+logcmd "set"
+
+trycopyfile /etc/hosts
+
+trycopyfile /etc/sysconfig/ufdbguard
+trycopyfile /etc/squid.conf  no
+trycopyfile /etc/squid/squid.conf  no
+trycopyfile /usr/local/etc/squid/squid.conf  no
+trycopyfile $ETCDIR/squid.conf  no
+
+trycopyfile /etc/wgetrc  no
+trycopyfile $HOME/.wgetrc  no
+
+trycopyfile $ETCDIR/ufdbGuard.conf
+trycopyfile $ETCDIR/ufdbguard.conf
+trycopyfile `pwd`/Makefile
+
+logcmd "ls -l $LOGDIR" 
+
+logcmd "ps -ef"
+logcmd "ps ax"
+
+# Check to see if you have this package installed:
+#    setroubleshoot
+# Once you get installed run this command:
+#    sudo /usr/bin/sealert -a /var/log/audit/audit.log | less
+# I have found this most helpful in troubleshooting SELinux denials.
+logcmd "sechecker -p analysis"			# SElinux
+logcmd "sealert -a /var/log/audit/audit.log"  
+
+trycopyfile $LOGDIR/ufdbguardd.log
+trycopyfile $LOGDIR/ufdbgclient.log
+
+trycopyfile ../config.log
+
+if [ -f $TT/squid.conf ]
+then
+   # cache.log
+   SQUIDLOGFILE=`grep '^cache_log' $TT/squid.conf 2>/dev/null | awk '{print $2}'`
+   if [ "$SQUIDLOGFILE" = "" ]
+   then
+      if [ -f $CONFDIR/logs/cache.log ]
+      then
+         SQUIDLOGFILE=$CONFDIR/logs/cache.log
+      fi
+   fi
+   if [ "$SQUIDLOGFILE" != "" ]
+   then
+      trycopyfile "$SQUIDLOGFILE"
+   fi
+
+   # access.log
+   SQUIDLOGFILE=`grep '^cache_access_log' $TT/squid.conf 2>/dev/null | awk '{print $2}'`
+   if [ "$SQUIDLOGFILE" = "" ]
+   then
+      if [ -f $CONFDIR/logs/access.log ]
+      then
+         SQUIDLOGFILE=$CONFDIR/logs/access.log
+      fi
+   fi
+   if [ "$SQUIDLOGFILE" != "" ]
+   then
+      trycopyfile "$SQUIDLOGFILE"
+   fi
+fi
+
+if [ -f $ETCDIR/ufdbGuard.conf ]
+then
+   DBHOME=`grep '^dbhome' $ETCDIR/ufdbGuard.conf 2>/dev/null | awk '{print $2}'`
+   if [ "$DBHOME" = "" ]
+   then
+      if [ -d $CONFDIR/blacklists ]
+      then
+         DBHOME=$CONFDIR/blacklists
+      fi
+   fi
+
+   if [ "$DBHOME" != "" ]
+   then
+      trycopyfile $DBHOME/alwaysdeny/domains
+      trycopyfile $DBHOME/alwaysdeny/urls
+      trycopyfile $DBHOME/alwaysdeny/expressions
+
+      trycopyfile $DBHOME/alwaysallow/domains
+      trycopyfile $DBHOME/alwaysallow/urls
+      trycopyfile $DBHOME/alwaysallow/expressions
+   fi
+fi
+
+trycopyfile ./config.h 
+
+date > $TT/date
+uname -a > $TT/uname
+ifconfig -a > $TT/ifconfig 2>/dev/null
+cc -v > $TT/cc.version 2>&1
+gcc --version > $TT/gcc.version 2>&1
+make --version > $TT/make.version 2>&1
+sed --version > $TT/sed.version 2>&1
+gdb --version > $TT/gdb.version 2>&1
+bison --version > $TT/bison.version 2>&1
+yacc --version > $TT/yacc.version 2>&1
+byacc --version > $TT/byacc.version 2>&1
+lex --version > $TT/lex.version 2>&1
+flex --version > $TT/flex.version 2>&1
+openssl version > $TT/openssl.version 2>&1
+squid -v > $TT/squid.version 2>&1
+wget --version > $TT/wget.version 2>&1
+
+uptime > $TT/uptime 2>&1
+
+if [ -r /proc/cpuinfo ]
+then
+   cat /proc/cpuinfo > $TT/cpuinfo 2>&1
+fi
+if [ -r /proc/meminfo ]
+then
+   cat /proc/meminfo > $TT/meminfo 2>&1
+fi
+
+df > $TT/df 2>&1
+dmesg > $TT/dmesg 2>&1 
+
+(
+   host cgibin.urlfilterdb.com 
+   nslookup cgibin.urlfilterdb.com
+   host updates.urlfilterdb.com
+   nslookup updates.urlfilterdb.com
+) > $TT/nslookup 2>&1
+
+# we are finished collecting info
+echolog "Generating a compressed tar file ..."
+cd $TMPDIR
+tar cf - $TTDIR | gzip > $TTDIR.tar.gz
+rm -rf $TTDIR
+
+echo
+echo "The compressed output of ufdbGrab is in $TMPDIR/$TTDIR.tar.gz"
+echo
+echo "This file may be uploaded to URLfilterDB.  Goto http://upload.urlfilterdb.com"
+
+exit 0
+
+

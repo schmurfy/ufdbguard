@@ -1,0 +1,133 @@
+SHELL=/bin/sh
+.SUFFIXES:
+.SUFFIXES: .c .o .pl .pm .pod .html .man
+
+PERL = @PERL@
+
+CC = @CC@
+CFLAGS = @CFLAGS@
+INSTALL = @INSTALL@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+SOLARIS_LIBS = @SOLARIS_LIBS@
+
+RM = rm -f
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = $(exec_prefix)/bin
+infodir = $(prefix)/info
+
+
+SUBDIRS = src doc test samples 
+
+all::
+	@echo making $@ in `basename \`pwd\``
+
+all update clean distclean realclean::
+	@for subdir in $(SUBDIRS); do \
+		(cd $$subdir && $(MAKE) $(MAKEDEFS) $@) || exit 1; \
+	done
+
+test::
+	@echo making $@ in `basename \`pwd\``
+	(cd $@ && $(MAKE) $(MAKEDEFS) $@)
+
+#
+# Dependencies for installing
+#	
+
+install:: install.bin install.etc install.man
+	@echo making $@ in `basename \`pwd\``
+
+uninstall:: uninstall.bin 
+	@echo making $@ in `basename \`pwd\``
+
+install.bin uninstall.bin::
+	@echo making $@ in `basename \`pwd\``
+	cd src && $(MAKE) $(MAKEDEFS) $@
+
+install.etc::
+	cd src && $(MAKE) $(MAKEDEFS) $@
+
+install.man::
+	cd doc && $(MAKE) $(MAKEDEFS) install
+
+clean::
+	@echo making $@ in `basename \`pwd\``
+	$(RM) *~ *.bak core *.log *.error
+
+realclean::
+	@echo making $@ in `basename \`pwd\``
+	$(RM) *~ *.bak core
+	$(RM) TAGS *.orig
+
+distclean::
+	@echo making $@ in `basename \`pwd\``
+	$(RM) *~ *.bak core
+	$(RM) TAGS *.orig
+	$(RM) Makefile config.h config.status config.log config.cache
+	$(RM) -rf autom4te.cache
+
+apidistclean::
+	( cd src && $(MAKE) $(MAKEDEFS) clean )
+	( cd src/api && $(MAKE) $(MAKEDEFS) $@ )
+	@echo making $@ in `basename \`pwd\``
+	$(RM) *~ *.bak core
+	$(RM) TAGS *.orig
+	$(RM) Makefile config.h config.status config.log config.cache
+	$(RM) -rf autom4te.cache
+
+dist distribution::	version update distclean
+	@echo making $@ in `basename \`pwd\``
+	# test -d "@FTPDIR@"
+	( cd .. ; tar cf - ufdbGuard-@VERSION@ -X ufdbGuard-@VERSION@/dist-exclusions | gzip --best > ./ufdbGuard-@VERSION@.tar.gz )
+	# @echo ""
+	# @echo Remember to cleanup in @FTPDIR@:
+	# @/bin/ls -l @FTPDIR@
+	# @echo ""
+	# @echo Distribution file is @FTPDIR@/ufdbGuard-@VERSION@.tar.gz
+	# @echo ""
+	# @echo Also remember to update the URL in ~ufdb/download/downloading.html!
+	# @echo ""
+
+apilinkdir::
+	-( cd .. ; if [ ! -e ufdbGuard-API-@VERSION@ ] ; then ln -s ufdbGuard-@VERSION@ ufdbGuard-API-@VERSION@ ; fi )
+
+apidist:: version apidistclean apilinkdir
+	@echo making $@ in `basename \`pwd\``
+	( cd .. ; tar cf - ufdbGuard-API-@VERSION@ --dereference -X ufdbGuard-API-@VERSION@/API-dist-exclusions | gzip --best > ./ufdbGuard-API-@VERSION@.tar.gz )
+
+tar::	version update distclean
+	@echo making $@ in `basename \`pwd\``
+	test -d "@FTPDIR@/development"
+	(cd ..;tar cvf - ufdbGuard-@VERSION@ | gzip --best > @FTPDIR@/development/`date +%Y-%m-%d`.ufdbGuard-@VERSION@.tar.gz)
+	@echo tar file is @FTPDIR@/development/`date +%Y-%m-%d`.ufdbGuard-@VERSION@.tar.gz
+
+version::	src/version.h
+	@echo making $@ in `basename \`pwd\``
+	cp -p src/version.h src/version.h~
+	sed 's/^#define VERSION .*/#define VERSION "@VERSION@"/' <src/version.h~ >src/version.h \
+	|| mv -f src/version.h~ src/version.h
+	-cmp -s src/version.h~ src/version.h && mv -f src/version.h~ src/version.h || :
+	$(RM) src/version.h~
+
+update::	# readme changelog  announce
+	@echo making $@ in `basename \`pwd\``
+
+announce::	ANNOUNCE
+	@echo making $@ in `basename \`pwd\``
+	test -d @FTPDIR@ && ( cmp -s ANNOUNCE @FTPDIR@/ANNOUNCE || \
+	$(INSTALL_DATA) ANNOUNCE @FTPDIR@/ANNOUNCE )
+
+readme:: 	README
+	@echo making $@ in `basename \`pwd\``
+	test -d @FTPDIR@ && ( cmp -s README @FTPDIR@/README || \
+	$(INSTALL_DATA) README @FTPDIR@/README )
+
+changelog::	CHANGELOG
+	@echo making $@ in `basename \`pwd\``
+	test -d @FTPDIR@ && ( cmp -s CHANGELOG @FTPDIR@/CHANGELOG || \
+	$(INSTALL_DATA) CHANGELOG @FTPDIR@/CHANGELOG )

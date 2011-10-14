@@ -1,0 +1,25 @@
+.\" man page for ufdbupdate
+.TH UFDBHTTPD "1" "08/04/2010" "Release 1.26" "Release 1.26"
+.\"
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.SH "NAME"
+\fBufdbhttpd\fR \- very simply HTTP daemon for ufdbGuard
+.SH "SYNOPSIS"
+.HP 9
+\fBufdbhttpd\fR 
+.SH "DESCRIPTION"
+.PP
+\fBufdbhttpd\fR is a very simple HTTP daemon that only knowns
+how to serve redirection messages produced by \fBufdbguardd\fR.
+.PP
+\fBufdbhttpd\fR should never be run by a user: 
+it is intended to be started by ufdbguardd exclusively.
+.SH "SEE ALSO"
+.PP
+ufdbguardd(1), ReferenceManual_1_26.pdf, 
+\fIhttp://www.urlfilterdb.com/en/downloads/documentation.html\fR.
+.SH "AUTHOR"
+The developers of URLfilterDB \- http://www.urlfilterdb.com

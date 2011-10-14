@@ -1,0 +1,125 @@
+SHELL=/bin/sh
+.SUFFIXES:
+.SUFFIXES: .c .o .pl .pm .pod .html .man
+
+PERL = @PERL@
+
+CC = @CC@
+CFLAGS = @CFLAGS@
+INSTALL = @INSTALL@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+
+RM = rm -f
+
+MAKEFLAGS=
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = $(exec_prefix)/bin
+infodir = $(prefix)/info
+
+all::
+	@echo making $@ in `basename \`pwd\``
+
+all::	test1.conf test2.conf
+	@echo making $@ in `basename \`pwd\``
+
+blacklist/domains.ufdb::
+	(cd ../src ; make ufdbGenTable)
+	../src/ufdbGenTable -t test -d blacklist/domains -u blacklist/urls 2>genTable.log
+
+test::	blacklist/domains.ufdb test1 test2 benchmark
+
+test1 test2::	test1.conf test2.conf ../src/ufdbGuard requests
+	@echo $@..
+	@$(RM) ufdbGuard.log
+	@echo Database size:
+	@if [ $@ = test1 ];\
+	then\
+	    wc -l blacklist/domains blacklist/urls;\
+	else\
+	    wc -l blacklist/domains blacklist/urls blacklist/expressions;\
+	fi
+	@wc -l<requests | awk '{printf "Running $@ with %d requests...\n",$$1}'
+	@-cat requests | ../src/ufdbGuard -c $@.conf>$@.output; exit 0
+	@echo Done
+	@echo @ac_n@ "Checking number of output lines..@ac_c@"
+	@test `wc -l<requests` -eq `wc -l<$@.output`
+	@echo .OK
+	@echo @ac_n@ "Checking the output against the expected..@ac_c@"
+	@diff $@.output $@.expected >/dev/null  2>&1
+	@echo .OK
+	@lines=`wc -l<requests`;\
+	awk  '/ ufdbGuard.+started at [0-9]+\.[0-9]+$$/ {start=$$(NF)};\
+	      / ufdbGuard ready for requests at [0-9]+\.[0-9]+$$/ {ready=$$(NF)};\
+              / ufdbGuard stopped at [0-9]+\.[0-9]+$$/ {stop=$$(NF)};\
+	      END { printf "ufdbGuard initialization took %.3f seconds\n",ready-start;\
+		    printf "ufdbGuard handled %d requests in %.3f seconds\n",\
+			    '"$$lines"',stop-ready}' \
+		ufdbGuard.log
+	@echo ""
+
+benchmark::	test1.conf ../src/ufdbGuard requests
+	@echo $@..
+	@$(RM) ufdbGuard.log
+	@echo Database size:
+	@wc -l blacklist/domains blacklist/urls
+	@wc -l<requests | awk '{printf "Running $@ test with %d requests...\n",$$1*100}'
+	@-i=100; while [ $$i -gt 0 ]; do cat requests; i=`expr $$i - 1`;done \
+	| ../src/ufdbGuard -c test1.conf>/dev/null; exit 0
+	@echo Done
+	@lines=`wc -l<requests`;\
+	awk  '/ ufdbGuard.+started at [0-9]+\.[0-9]+$$/ {start=$$(NF)};\
+	      / ufdbGuard ready for requests at [0-9]+\.[0-9]+$$/ {ready=$$(NF)};\
+              / ufdbGuard stopped at [0-9]+\.[0-9]+$$/ {stop=$$(NF)};\
+	      END { printf "ufdbGuard initialization took %.3f seconds\n",ready-start;\
+		    printf "ufdbGuard handled %d requests in %.3f seconds\n",\
+			    '"$$lines"'*100,stop-ready}' \
+		ufdbGuard.log
+
+benchmark2::	benchmark2.conf ../src/ufdbGuard requests
+	@echo $@..
+	@$(RM) ufdbGuard.log
+	@echo Database size:
+	@wc -l /local/squid/blacklists/adult/domains /local/squid/blacklists/adult/urls
+	@wc -l<requests | awk '{printf "Running $@ test with %d requests...\n",$$1*100}'
+	@-i=100; while [ $$i -gt 0 ]; do cat requests; i=`expr $$i - 1`;done \
+	| ../src/ufdbGuard -c benchmark2.conf>/dev/null; exit 0
+	@echo Done
+	@lines=`wc -l<requests`;\
+	awk  '/ ufdbGuard.+started at [0-9]+\.[0-9]+$$/ {start=$$(NF)};\
+	      / ufdbGuard ready for requests at [0-9]+\.[0-9]+$$/ {ready=$$(NF)};\
+              / ufdbGuard stopped at [0-9]+\.[0-9]+$$/ {stop=$$(NF)};\
+	      END { printf "ufdbGuard initialization took %.3f seconds\n",ready-start;\
+		    printf "ufdbGuard handled %d requests in %.3f seconds\n",\
+			    '"$$lines"'*100,stop-ready}' \
+		ufdbGuard.log
+
+../src/ufdbGuard:
+	@echo making $@ in `basename \`pwd\``
+	(cd ../src; make ufdbGuard)
+
+update::
+	@echo making $@ in `basename \`pwd\``
+
+clean::
+	@echo making $@ in `basename \`pwd\``
+	$(RM) *~ *.bak core *.log *.error
+	$(RM) blacklist/*~ blacklist/*.bak blacklist/core
+	$(RM) blacklist/*.ufdb genTable.log
+	$(RM) ufdbGuard.log ufdbGuard.log test1.output test2.output
+
+realclean:: clean
+	@echo making $@ in `basename \`pwd\``
+	$(RM) TAGS *.orig
+
+distclean:: realclean
+	@echo making $@ in `basename \`pwd\``
+	$(RM) Makefile test1.conf test2.conf
+
+apidistclean:
+	@echo making $@ in `basename \`pwd\``
+

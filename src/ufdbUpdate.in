@@ -1,0 +1,428 @@
+#!/bin/sh
+#
+# ufdbUpdate
+#
+# Update the URLfilterDB database by downloading it and sending
+# a HUP signal to ufdbguardd.
+#
+# It is suggested to execute this script from cron, on Monday-Friday 
+# between 01:00 and 06:00 local time.
+#
+# Note that the user who runs this script must have sufficient privileges
+# to overwrite an existing URL filter database and to send a HUP signal
+# to ufdbguardd.
+#
+# $Id: ufdbUpdate.in,v 1.36 2011/06/22 17:58:10 root Exp root $
+
+# About the exit codes:
+# 0  all OK
+# 1  version mismatch warning; most likely there is a new version of ufdbguardd
+# 2  license expiration warning: less than 2 months to renew license
+# 3  license expired: a license renewal is required immediately
+# 11 configuration error
+# 12 temporary file error
+# 13 download OK but cannot signal ufdbguardd
+# 21-40 exit code of ufdbUpdate is exit code of wget + 20
+# 41-60 exit code of ufdbUpdate is exit code of gunzip + 40
+# 61-80 exit code of ufdbUpdate is exit code of tar + 60
+
+# begin of user settings
+
+DOWNLOAD_USER=""                        # fill in the user and password
+DOWNLOAD_PASSWORD=""
+BLACKLIST_DIR="@ufdb_dbhome@"           # location of the URL database
+PROXY_USER=""                           # if the download must go via an authenticating proxy
+PROXY_PASSWORD=""
+# http_proxy=""				# may need to set http_proxy is not already set
+CUSTOMER_ID="0000-0000-0000-0000"	# not yet required
+WGET_COMMAND="@WGET@"                     # or a full path name to wget
+NOTIFY_UFDBGUARDD="yes"                 # send HUP signal to ufdbguardd
+SYSLOG_FACILITY="local6"                # errors/warnings in system log have this facility name
+
+# end of user settings.
+# DO NOT EDIT ANYTHING BELOW THIS LINE.  ########################################
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+BINDIR="@exec_prefix@/bin"
+UFDB_VERSION="1.26"
+UPDATE_HOST="updates.urlfilterdb.com"
+URL_DIR="$UPDATE_HOST/licensed/databases"
+GUARD_TYPE="ufdbguard/2.0"
+WGET_OPTIONS="--tries 3 --waitretry=8 --timeout=60 --user-agent=ufdbUpdate-$UFDB_VERSION"
+# --limit-rate is removed since the implementation in wget has a severe bug
+
+PATH="/bin:/usr/bin:$PATH"
+export PATH
+
+if [ "$TMPDIR" = "" ]
+then
+   TMPDIR="/tmp"
+fi
+
+if [ "${1:-notset}" = "-v" ] 
+then
+   verbose=yes
+else
+   verbose=no
+fi
+
+umask 022
+
+if [ "$DOWNLOAD_USER" = "" ]
+then
+   echo "The download user is not specified."
+   echo "Please contact support@urlfilterdb.com to get your (trial)"
+   echo "username and password to download updates of URLfilterDB."
+   echo "For trial licenses:"
+   echo "During the evalution period you may use the demo username/password."
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+          "download user name not set. contact support@urlfilterdb.com"
+   exit 11
+fi
+
+if [ ! -d "$TMPDIR"  -o  ! -w "$TMPDIR" ]
+then
+   echo "The temporary download directory \"$TMPDIR\" is invalid or not writable."
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+          "temporary directory \"$TMPDIR\" is invalid or not writable"
+   exit 11
+fi
+
+if [ ! -d $BLACKLIST_DIR  -o  ! -w $BLACKLIST_DIR ]
+then
+   echo "$BLACKLIST_DIR is not an existing directory or not writable."
+   echo "Verify BLACKLIST_DIR in ufdbUpdate."
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+          "Blacklist directory \"$BLACKLIST_DIR\" is invalid or not writable."
+   exit 11
+fi
+
+
+if [ $verbose = no ]
+then
+   WGET_OPTIONS="-q $WGET_OPTIONS"
+fi
+
+if [ ! -x $WGET_COMMAND ]
+then
+   echo "WGET_COMMAND is $WGET_COMMAND but is not an executable."
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+        "WGET_COMMAND is $WGET_COMMAND but is not an executable."
+   if [ $verbose = yes ]
+   then
+      echo "Make sure that \"wget\" is installed and that PATH is set correctly."
+      echo "Rerun the configure command and \"make install\""
+   fi
+   exit 11
+fi
+
+if [ $verbose = yes ]
+then
+   if [ "$http_proxy" = "" ]
+   then
+      echo "http_proxy is not set: no proxy is used for downloads."
+   else
+      if [ "$PROXY_USER" != ""  -a  "$PROXY_PASSWORD" != "" ]
+      then
+	 echo "Warning: wget uses http_proxy=$http_proxy and PROXY_USER/PROXY_PASSWORD are unset."
+      else
+	 echo "wget uses http_proxy=$http_proxy and PROXY_USER=$PROXY_USER."
+      fi
+   fi
+fi
+
+if [ "$PROXY_USER" != ""  -a  "$PROXY_PASSWORD" != "" ]
+then
+   WGET_OPTIONS="$WGET_OPTIONS  --proxy-user=$PROXY_USER  --proxy-passwd=$PROXY_PASSWORD "
+fi
+
+WGET_OPTIONS="$WGET_OPTIONS  --http-user=$DOWNLOAD_USER  --http-passwd=$DOWNLOAD_PASSWORD "
+
+TMP_FILE="$TMPDIR/urlfilterdb-latest.tar.gz"
+TMP_TARFILE="$TMPDIR/urlfilterdb-latest.tar"
+rm -f $TMP_FILE $TMP_TARFILE
+
+if [ -f $TMP_FILE ]
+then
+   echo "cannot remove file $TMP_FILE"
+   echo "URLfilterDB NOT downloaded."
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+          "Cannot remove $TMP_FILE.  download aborted."
+   exit 12
+fi
+
+if [ $verbose = yes ]
+then
+   echo "Downloading the current database..."
+   echo "   $WGET_COMMAND -O $TMP_FILE blacklists-latest.tar.gz"
+fi
+
+# there are some wget's which need the username/password in the URL :-(
+$WGET_COMMAND -O $TMP_FILE $WGET_OPTIONS \
+   "http://$DOWNLOAD_USER:$DOWNLOAD_PASSWORD@$URL_DIR/$GUARD_TYPE/blacklists-latest.tar.gz"
+exitval=$?
+if [ $exitval -ne 0  -o  ! -f $TMP_FILE ]
+then
+   echo "Download of the URL database failed (wget exit code is $exitval)."
+   echo "You might need a new username/password from support@urlfilterdb.com"
+   if [ -f $TMP_FILE ]
+   then
+      ls -l $TMP_FILE
+   else
+      echo "URL database download failed: $TMP_FILE does not exist."
+   fi
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+          "URL database download failed.  You might need a new username/password.  wget exit code is $exitval."
+   # The download failed but we like to send a HUP signal anyway so that uploads of uncategorised URLs continue
+   # so do not exit (any more).
+   exitval=`expr $exitval + 20`
+else
+   if [ $verbose = yes ]
+   then
+      echo "new database downloaded:"
+      ls -l $TMP_FILE
+   fi
+fi
+
+if [ $exitval -eq 0 ]
+then
+   if [ $verbose = yes ]
+   then
+      echo "Unpacking the database..."
+   fi
+
+   cd $BLACKLIST_DIR
+   cd ..
+
+   gunzip $TMP_FILE
+   exitval=$?
+   if [ $exitval -ne 0 ]
+   then
+      echo "Decompression with gunzip of the downloaded URL database ($TMP_FILE) failed."
+      echo "gunzip exit code is $exitval."
+      logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+	     "Decompression of downloaded URL database failed.  gunzip exit code is $exitval."
+      # The download failed but we like to send a HUP signal anyway so that uploads of uncategorised URLs continue
+      exitval=`expr $exitval + 40`
+   fi
+
+   if [ $exitval -eq 0 ]
+   then
+      tar xf $TMP_TARFILE
+      exitval=$?
+      if [ $exitval -eq 0 ]
+      then
+         if [ $verbose = yes ]
+	 then
+	    echo "The downloaded database is installed in directory $BLACKLIST_DIR and its subdirectories"
+	 fi
+      else
+	 echo "unpacking with tar of downloaded URL database ($TMP_TARFILE) failed."
+	 echo "tar exit code is $exitval."
+	 logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+		"Unpacking of downloaded URL database failed.  tar exit code is $exitval."
+	 # The download failed but we like to send a HUP signal anyway so that uploads of uncategorised URLs continue
+	 exitval=`expr $exitval + 60`
+      fi
+   fi
+fi
+
+rm -f $TMP_FILE $TMP_TARFILE
+
+if [ $verbose = yes ]
+then
+   echo "Sending HUP signal to the ufdbguardd daemon to load new configuration..."
+fi
+
+
+# the 'ps' command on netbsd needs other flags than '-ef'
+KERNEL=`uname -s`
+case "$KERNEL" in
+    *NetBSD*)
+        PSALL="-al" ;;
+    *FreeBSD*)
+        PSALL="-axj" ;;
+    *OpenBSD*)
+        PSALL="-axj" ;;
+    *)
+	# Linux and others
+        PSALL="-ef" ;;
+esac
+export PSALL
+
+
+if [ -f /var/tmp/ufdbguardd.pid ]
+then
+   DPIDS=`cat /var/tmp/ufdbguardd.pid`
+   # doublecheck
+   CHECK=`ps -p $DPIDS 2>/dev/null | grep ufdbguardd `
+   if [ "$CHECK" = "" ]
+   then
+      PS=`ps $PSALL`
+      DPIDS=`echo "$PS" | grep ufdbguardd | grep -v grep | awk '{ print $2 }' `
+   fi
+else
+   PS=`ps $PSALL`
+   DPIDS=`echo "$PS" | grep ufdbguardd | grep -v grep | awk '{ print $2 }' `
+fi
+
+
+if [ "$DPIDS" != "" ]	# are there ufdbguardd processes ?
+then
+   kill -HUP $DPIDS
+   exitval=$?
+   if [ $exitval != 0 ]
+   then
+      logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+	     "HUP signal could not be sent to the ufdbguardd daemon. You must restart the daemon manually."
+      if [ $verbose = yes ]
+      then
+         echo "HUP signal could not be sent to the ufdbguardd daemon. You must restart the daemon manually."
+      fi
+      exitval=13
+   fi
+else			# no ufdbguardd processes... 
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+	  "No ufdbguardd processes found.  Starting the daemon..."
+   if [ $verbose = yes ]
+   then
+      echo "No ufdbguardd processes found.  Starting the daemon..."
+   fi
+   for dir in   /usr/pkg/etc/rc.d  \
+                /usr/local/etc/rc.d  \
+		/etc/rc.d/init.d  \
+		/etc/init.d  \
+		/sbin/init.d  \
+		$BINDIR
+   do
+      if [ -f $dir/ufdb.sh -o -f $dir/ufdb ]
+      then
+	 # The most common reason why ufdbguardd does not start is because 
+	 # the UNIX socket /tmp/ufdbguardd-03977 exists, so remove it!
+	 rm -f /tmp/ufdbguardd-03977
+
+	 if [ -x $dir/ufdb.sh ]
+	 then
+	    $dir/ufdb.sh start
+	 else
+	    $dir/ufdb start
+	 fi
+	 exitcode=$?
+	 if [ $exitcode -ne 0 ]
+	 then
+	    logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+		   "The ufdbguardd daemon did not start (exit code is $exitval)."
+	    if [ $verbose = yes ]
+	    then
+	       echo "The ufdbguardd daemon did not start (exit code is $exitval)."
+	    fi
+	    exitval=13
+	 fi
+      fi
+   done
+
+   logger -p $SYSLOG_FACILITY.error -t ufdbUpdate \
+	  "The ufdbguardd daemon could not be started (could not find the ufdb[.sh] start script)."
+   if [ $verbose = yes ]
+   then
+      echo "The ufdbguardd daemon could not be started (could not find the ufdb[.sh] start script)."
+   fi
+fi
+ 
+# Check the latest version.
+if [ -f $BLACKLIST_DIR/version ]
+then
+   LATEST_VERSION=`cat $BLACKLIST_DIR/version`
+   if [ "$LATEST_VERSION" != "$UFDB_VERSION" ]
+   then
+      if [ $verbose = yes ]
+      then
+	 echo "Notice: ufdbguard has version $UFDB_VERSION while the latest released version is $LATEST_VERSION"
+      fi
+      logger -p $SYSLOG_FACILITY.warning -t ufdbUpdate \
+         "ufdbguard has version $UFDB_VERSION while the latest released version is $LATEST_VERSION"
+      exitval=1
+   else
+      if [ $verbose = yes ]
+      then
+	 echo "ufdbguard has the latest version: $LATEST_VERSION"
+      fi
+   fi
+else
+   echo "warning: the downloaded database does not have a file called \"version\""
+   exitval=1
+fi
+
+# show the creation date
+if [ $verbose = yes ]
+then
+   if [ -f $BLACKLIST_DIR/creationdate ]
+   then
+      echo "URL database creation date: " `cat $BLACKLIST_DIR/creationdate`
+   else
+      echo "The URL database has no file with the creation date."
+   fi
+fi
+
+# See if there is a license warning for us
+cd $BLACKLIST_DIR
+$WGET_COMMAND -O ./license-status $WGET_OPTIONS \
+   "http://$DOWNLOAD_USER:$DOWNLOAD_PASSWORD@$UPDATE_HOST/status/license/$DOWNLOAD_USER"
+exitcode=$?
+if [ $exitcode -eq 0  -a  -f ./license-status ]
+then
+   LICSTAT=`cat ./license-status`
+   case "$LICSTAT" in
+      WARNING*|Warning*|warning*)  
+	 if [ $exitval -lt 2 ]
+	 then
+	    exitval=2 
+	 fi
+	 if [ $verbose = yes ]
+	 then
+	    echo "URL database license status: $LICSTAT"
+	 fi
+	 ;;
+      EXPIRED*|Expired*|expired*)  
+	 if [ $exitval -lt 2 ]
+	 then
+	    exitval=3 
+	 fi
+	 # if [ $verbose = yes ]
+	 # then
+	    echo "URL database license status: $LICSTAT *****"
+	 # fi
+	 ;;
+      *)
+	 if [ $verbose = yes ]
+	 then
+	    echo "URL database license status: $LICSTAT"
+	 fi
+   esac
+fi
+
+if [ $verbose = yes ]
+then
+   echo "Done."
+   if test -t 0
+   then
+      schedule=`crontab -l 2>/dev/null | grep ufdbUpdate`
+      if [ "$schedule" = "" ]
+      then
+	 echo
+         echo "NOTE: ufdbUpdate is not yet defined as a cron job. *****"
+      fi
+
+      clients=`ps $PSALL | grep ufdbgclient | grep -v grep`
+      if [ "$clients" = "" ]
+      then
+         echo
+	 echo "NOTE: there are no ufdbgclient processes running.  *****"
+	 echo "Check parameters url_rewrite_program and url_rewrite_children in squid.conf"
+      fi
+   fi
+fi
+
+exit 0
+

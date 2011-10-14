@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# ufdb-pstack: print a stack dump
+# based upon pstack of the gdb package, Copyright by FSF
+# minor modifications by Marcus Kool
+#
+# RCS: $Id: ufdb-pstack.in,v 1.4 2010/11/26 14:46:44 root Exp root $
+
+if test ! -d /proc ; then
+   echo "ufdb-pstack: no /proc directory: cannot print stack dump"
+   exit 0
+fi
+
+if test $# -ne 1; then
+    echo "Usage: `basename $0 .sh` <process-id>" 1>&2
+    exit 1
+fi
+
+if test ! -r /proc/$1; then
+    echo "Process $1 not found." 1>&2
+    exit 1
+fi
+
+## set -x
+
+# GDB doesn't allow "thread apply all bt" when the process isn't
+# threaded; need to peek at the process to determine if that or the
+# simpler "bt" should be used.
+
+backtrace="bt"
+if test -d /proc/$1/task ; then
+    # Newer kernel; has a task/ directory.
+    if test `/bin/ls /proc/$1/task | /usr/bin/wc -l` -gt 1 2>/dev/null ; then
+	backtrace="thread apply all bt"
+    fi
+elif test -f /proc/$1/maps ; then
+    # Older kernel; go by it loading libpthread.
+    if /bin/grep -e libpthread /proc/$1/maps > /dev/null 2>&1 ; then
+	backtrace="thread apply all bt"
+    fi
+fi
+
+GDB=${GDB:-gdb}
+
+# if $GDB -nx --quiet --batch --readnever > /dev/null 2>&1; then
+#     readnever=--readnever
+# else
+#     readnever=
+# fi
+
+readnever=
+
+# Run GDB, strip out unwanted noise.
+$GDB --quiet $readnever -nx /proc/$1/exe $1 <<EOF 2>&1  |
+set interactive-mode off
+set confirm off
+set print null-stop on
+set print object on
+# set print array on
+set width 0
+set height 0
+set pagination no
+$backtrace full
+EOF
+sed -n \
+    -e 's/^\((gdb) \)*//' \
+    -e '/^#0 .* __kernel_vsyscall/d' \
+    -e '/ in clone /d' \
+    -e '/No symbol table info available/d' \
+    -e '/Loaded symbols for/d' \
+    -e '/Reading symbols from/d' \
+    -e '/^\[New Thread /d' \
+    -e 's/^No locals./        &/' \
+    -e 'p' 
+

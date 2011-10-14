@@ -1,0 +1,44 @@
+The file "COPYING" contains the Copyright statement for
+the ufdbGuard software suite.
+
+The official ufdbGuard homepage is http://www.urlfilterdb.com
+ufdbGuard can be downloaded at http://www.urlfilterdb.com
+and http://sourceforge.net
+
+In case that anyone has a build problem or needs help
+installing or configuring ufdbGuard, you can send an email
+to support@urlfilterdb.com.
+We do reply!
+
+Please download the Reference Manual for detailed installation
+and configuration instructions.
+
+ufdbGuard is a free (GPL2), flexible and extremely fast filter, redirector
+and access controller plugin for squid.  It lets you define multiple
+access rules with different restrictions for different user groups on
+a squid cache.  ufdbGuard uses squid's standard redirector interface.
+
+The file "GPL" contains the license of the software, the GPL
+is also known as the GNU Public License, Version 2.
+
+The ufdbGuard daemon is inspired by squidGuard 1.2 and 
+has almost all of its features and more.
+Parts of the ufdbGuard daemon are based on squidGuard.
+The ufdbGuard API is NOT based on squidGuard.
+
+Features of ufdbGuard:
++  3-4 times faster than squidGuard
++  a test mode (-T option) allows you to test a URL filter database
+   without actually blocking sites.
++  optional uploads of uncategorised URLs for categorisation by URLfilterDB
++  compressed databases
++  a multithreaded daemon with one copy of the database in memory
++  an API to use ufdbGuard in any 3rd party application
++  no dependency on Berkeley DB
++  detect HTTPS proxy tunnels.
++  block HTTPS for URLs without FQDN
++  block HTTPS for sites without a properly signed SSL certificate
++  enforce the SafeSearch feature on Google and other search engines
+
+The Reference Manual contains a complete installation procedure.
+

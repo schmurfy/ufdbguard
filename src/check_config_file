@@ -1,0 +1,251 @@
+#!/bin/sh
+#
+# check_config_file - update ufdbGuard.conf for current version and new features
+#
+# $Id: check_config_file,v 1.9 2011/06/22 17:56:30 root Exp root $
+#
+# Check ufdbGuard.conf for:
+# - new URL categories (p2p,extappl,socialnet)
+# - redirect to www.urlfilterdb.com/cgi-bin/URLblocked.cgi
+
+ME=check_config_file
+
+CONFIG="$1"
+if [ ! -r "$CONFIG" ]
+then
+   echo "$ME: cannot read configuration file $CONFIG *****"
+   exit 1
+fi
+
+TMPFILE=/tmp/newUfdbGuard.conf.$$
+touch $TMPFILE
+if [ ! -f $TMPFILE ]
+then
+   echo "cannot create temporary file $TMPFILE"
+   exit 1
+fi
+
+if [ ! -f $CONFIG.pre-v1.26 ]
+then
+   cp $CONFIG $CONFIG.pre-v1.26
+   if [ ! -f $CONFIG.pre-v1.26 ]
+   then
+      echo "cannot copy configuration file to $CONFIG.pre-v1.26"
+      exit 1
+   fi
+fi
+
+if [ ! -w $CONFIG ]
+then
+   chmod u+w $CONFIG
+   if [ ! -w $CONFIG ]
+   then
+      echo "$ME: this script check various parameters and updates the"
+      echo "configuration file $CONFIG"
+      echo "but it is not writable.  Correct the permissions and rerun \"make install\"."
+      exit 1
+   fi
+fi
+
+PROXIESDEF=`grep -e '^dest.*proxies' -e '^cat.*proxies' $CONFIG`
+if [ "$PROXIESDEF" = "" ]
+then
+   echo "The configuration file $CONFIG"
+   echo "lacks the definition of the URL category \"proxies\"."
+   echo "All parties who use the URL database of URLfilterDB should have"
+   echo "this URL category defined."
+   echo 
+   echo "Further configuration checks are suppressed."
+   echo "If you use the URL database of URLfilterDB you need to correct this and"
+   echo "rerun \"make install\"."
+   exit 1
+fi
+
+EXTAPPLDEF=`grep -e '^dest.*extappl' -e '^cat.*extappl' $CONFIG`
+if [ "$EXTAPPLDEF" = "" ]
+then
+   echo "The configuration file does not have a category definition for "
+   echo "the URL category \"extappl\" (external applications)."
+   echo "Adding extappl category ..."
+   awk '/^dest.*proxies/ || /^cat.*proxies/ {
+	   redirect = "";
+	   while ($0 !~ "^[ \t]*}.*")
+	   {
+	      if ($0 ~ "^[ \t]*redirect.*")
+	      {
+	         redirect = $0;
+	      }
+	      print $0;
+	      getline;
+	   }
+	   print $0;
+	   print "";
+           print "# EXTERNAL-APPLICATIONS added by the check_config_file script of ufdbGuard.";
+	   print "# define the extappl category"
+	   print "category extappl {";
+	   print "   domainlist      extappl/domains";
+	   print "   expressionlist  extappl/expressions";
+	   if (redirect != "")
+	   {
+	      print redirect;
+	   }
+	   print "}";
+	   print "";
+	   next;
+	}
+        /^[ \t]*pass/ && !/extappl/ {
+	   gsub( "! *proxies", "!proxies !extappl", $0 );  
+	   print $0; 
+	   next; 
+        }
+        { print $0; next; }
+	' < $CONFIG > $TMPFILE
+   cat $TMPFILE > $CONFIG
+   echo
+fi
+
+
+P2PDEF=`grep -e '^dest.*p2p' -e '^cat.*p2p' $CONFIG`
+if [ "$P2PDEF" = "" ]
+then
+   echo "The configuration file does not have a category definition for "
+   echo "the new URL category \"p2p\" (peer-to-peer)."
+   echo "Adding p2p category ..."
+   awk '/^dest.*proxies/ || /^cat.*proxies/ {
+	   redirect = "";
+	   while ($0 !~ "^[ \t]*}.*")
+	   {
+	      if ($0 ~ "^[ \t]*redirect.*")
+	      {
+	         redirect = $0;
+	      }
+	      print $0;
+	      getline;
+	   }
+	   print $0;
+	   print "";
+           print "# P2P added by the check_config_file script of ufdbGuard.";
+	   print "# define the P2P category"
+	   print "category p2p {";
+	   print "   domainlist      p2p/domains";
+	   print "   expressionlist  p2p/expressions";
+	   if (redirect != "")
+	   {
+	      print redirect;
+	   }
+	   print "}";
+	   print "";
+	   next;
+	}
+        /^[ \t]*pass/ && !/p2p/ {
+	   gsub( "! *proxies", "!p2p !proxies", $0 );  
+	   print $0; 
+	   next; 
+        }
+        { print $0; next; }
+	' < $CONFIG > $TMPFILE
+   cat $TMPFILE > $CONFIG
+   echo
+fi
+
+
+SOCIALNETDEF=`grep -e '^dest.*socialnet' -e '^cat.*socialnet' $CONFIG`
+if [ "$SOCIALNETDEF" = "" ]
+then
+   echo "The configuration file does not have a category definition for "
+   echo "the URL category \"socialnet\" (social networks)."
+   echo "Adding socialnet category ..."
+   awk '/^dest.*proxies/ || /^cat.*proxies/ {
+	   redirect = "";
+	   while ($0 !~ "^[ \t]*}.*")
+	   {
+	      if ($0 ~ "^[ \t]*redirect.*")
+	      {
+	         redirect = $0;
+	      }
+	      print $0;
+	      getline;
+	   }
+	   print $0;
+	   print "";
+           print "# SOCIAL NETWORKS added by the check_config_file script of ufdbGuard.";
+	   print "# define the socialnet category"
+	   print "category socialnet {";
+	   print "   domainlist      socialnet/domains";
+	   print "   expressionlist  socialnet/expressions";
+	   if (redirect != "")
+	   {
+	      print redirect;
+	   }
+	   print "}";
+	   print "";
+	   next;
+	}
+        { print $0; next; }
+	' < $CONFIG > $TMPFILE
+   cat $TMPFILE > $CONFIG
+   echo
+fi
+
+
+OLDREDIR=`grep '^[ 	]*redirect.*www.urlfilterdb.com/cgi-bin/' $CONFIG`
+if [ "$OLDREDIR" != "" ]
+then
+   echo "Substituting redirects to www.urlfilterdb.com/cgi-bin/URLblocked.cgi into"
+   echo "redirects to cgibin.urlfilterdb.com to offload the main website of URLfilterDB ..."
+   sed -e 's,\(redirect.*\)www.urlfilterdb.com,\1cgibin.urlfilterdb.com,' < $CONFIG > $TMPFILE
+   cat $TMPFILE > $CONFIG
+   echo
+fi
+
+HTTPSOPT1=`grep enforce-https-with-hostname $CONFIG`
+if [ "$HTTPSOPT1" = "" ]
+then
+   echo "Notice: the configuration does not use the option enforce-https-with-hostname ====="
+fi
+
+HTTPSOPT2=`grep enforce-https-offical-certificate $CONFIG`
+if [ "$HTTPSOPT2" != "" ]
+then
+   # Oops, we have an old typo in the parameter name. fix it!
+   sed -e 's,enforce-https-offical-certificate,enforce-https-official-certificate,g' < $CONFIG > $TMPFILE
+   cat $TMPFILE > $CONFIG
+fi
+
+HTTPSOPT2=`grep enforce-https-official-certificate $CONFIG`
+if [ "$HTTPSOPT2" = "" ]
+then
+   echo "Notice: the configuration does not use the option enforce-https-official-certificate ====="
+fi
+
+HTTPSOPT3=`grep https-prohibit-insecure-sslv2 $CONFIG`
+if [ "$HTTPSOPT3" = "" ]
+then
+   echo "Notice: the configuration does not use the new option https-prohibit-insecure-sslv2 ====="
+fi
+
+SECCAT=`grep -e '^dest.*security' -e '^cat.*security' $CONFIG`
+if [ "$SECCAT" = "" ]
+then
+   echo "Notice: the configuration does not use the category \"security\" ====="
+fi
+
+if [ "$SECCAT" = ""  -o  "$HTTPSOPT1" = ""  -o  "$HTTPSOPT2" = "" ]
+then
+   echo "Notice: to have safer HTTPS usage it is recommended to use the security category and ====="
+   echo "Notice: the options enforce-https-with-hostname and enforce-https-official-certificate ====="
+   echo "Notice: the new option https-prohibit-insecure-sslv2 is optional ====="
+   echo
+fi
+
+if [ "$EXTAPPLDEF" = ""  -o  "$P2PDEF" = ""  -o  "$SOCIALNETDEF" = "" ]
+then
+   echo "The configuration file was modified to add the categories for socialnet, extappl and/or p2p."
+   echo "It is recommended to verify all ACLs for the inclusion of these URL categories *****"
+fi
+
+echo "The original configuration file is saved in $CONFIG.pre-v1.26"
+echo
+
+exit 0
+

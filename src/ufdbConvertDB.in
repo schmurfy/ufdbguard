@@ -1,0 +1,82 @@
+#!/bin/sh
+#
+# ufdbConvertDB - convert flat files with domains and URLs to .ufdb table files
+#
+# This script converts an ASCII-based (flat file) URL database to the 
+# .ufdb table format that ufdbGuard uses.
+# This script only needs a top level directory and it traverses all subdirectories
+# searching for directories with domains and urls files.
+#
+# usage: ufdbConvertDB <top-level-directory>
+#
+# $Id: ufdbConvertDB.in,v 1.3 2011/01/20 12:47:39 root Exp root $
+
+DEBUG=no
+if [ "$1" = -d ]
+then
+   DEBUG=yes
+   shift
+fi
+
+TOPDIR="$1"
+
+if [ ! -d "$TOPDIR" ]
+then
+   echo "usage: ufdbConvertDB [-d] <top-level-directory>"
+   exit 1
+fi
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+BINDIR=@bindir@
+PATH=$PATH:$BINDIR
+export PATH
+
+chkdirdb () {
+   dir="$1"
+   cd $dir
+
+   # echo "directory $dir " `pwd`
+   for tstd in *
+   do
+      if test -d "$tstd" 
+      then
+	 echo "Searching directory $tstd for tables ..."
+	 chkdirdb "$tstd"
+      fi
+   done
+
+   if test -f domains 
+   then
+      echo "found domains file in " `pwd` " ..."
+      if test -f urls 
+      then
+	 echo "found urls file in " `pwd` " ..."
+	 if test ! -f domains.ufdb  -o  domains.ufdb -ot domains  -o  domains.ufdb -ot urls
+	 then
+	    echo "generating .ufdb file: ufdbGenTable -n -q -C -W -d domains -u urls"
+	    ufdbGenTable -n -q -C -W -d domains -u urls
+	 fi
+	 if test $DEBUG = yes 
+	 then
+	    ls -l domains urls domains.ufdb
+	 fi
+      else
+	 if test ! -f domains.ufdb  -o  domains.ufdb -ot domains 
+	 then
+	    echo "generating .ufdb file: ufdbGenTable -n -q -C -W -d domains"
+	    ufdbGenTable -n -q -C -W -d domains
+	 fi
+	 if test $DEBUG = yes
+	 then
+	    ls -l domains domains.ufdb
+	 fi
+      fi
+   fi
+
+   cd ..
+}
+
+chkdirdb "$TOPDIR"
+exit 0
+

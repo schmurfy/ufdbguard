@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# tsquidlog
+#
+# run ufdbGuard and use a squid access.log file as input
+
+INPUT="${1:-/local/squid/test/access.log.saved}"
+# INPUT="${1:-/local/squid/test/access.log.saved0}"
+CONFIG="${2:-yourufdbGuard.conf}"
+# CONFIG="${2:-/local/squid/etc/ufdbGuard.conf}"
+
+TOOL=memcheck
+# TOOL=addrcheck
+
+
+
+head -10000 $INPUT |
+while read time code ip answer len httpcode url minus access type rest
+do
+   echo "$url $ip/- - $httpcode"
+done > /local/squid/test/ufdb.input
+

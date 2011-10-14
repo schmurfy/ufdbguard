@@ -1,0 +1,76 @@
+
+ufdbguardd.c
+
+	The multi-threaded ufdbguardd daemon has 64 worker threads to perform
+	URL verifications.  There is one thread that listens on the main socket 
+	for new connections.  There is a helper thread to handle SIGCHLD and 
+	there is a helper thread to catch the various other signals.
+	There are 14 threads to verify HTTPS sites and detect proxy tunnels.
+
+	initialise_readonly_db_in_memory();
+	pthread_create( io_handler );
+	pthread_create( child_signal_handler );
+	pthread_create( multi_signal_handler );
+	for (i = 0; i < 14; i++)
+		pthread_create( tunnel_verifier );
+	for (i = 0; i < 64; i++)
+		pthread_create( worker );
+        
+	pthread_join( io_handler );
+	exit( 0 );
+
+
+	io_handler()
+	{
+		sock = open_server_socket();
+		while (newfd = accept(sock))
+		{
+			push_fd( newfd );
+	        }
+        }
+
+	worker()
+	{
+		while (1)
+		{
+		   fd = pop_fd();
+		   while (readline(fd,line) > 0)
+		   {
+		       parseline( line );
+		       res = lookup( line );
+		       send_result( fd, res );
+		   }
+		   close( fd );
+	        }
+        }
+
+	lookup( line )
+	{
+	   if (Reconfiguring)
+	      return "";	/* OK */
+	   return UFDBlookup( line );
+        }
+
+	hup_signal_handler()
+	{
+	   Reconfiguring = 1;
+	   reload_config();
+	   Reconfiguring = 0;
+	}
+
+
+
+ufdbgclient.c  
+
+	ufdbgclient is the squid redirector and replaces the non-threaded ufdbGuard.
+	It receives requests from Squid and sends them to ufdbguardd daemon.
+	The replies of ufdbguardd are forwarded to Squid.
+
+	server_sock = open_socket_with( ufdbGuardDaemonSocket );
+	while (1)
+	{
+		line = fgets( stdin );
+		reply = get_reply_from_ufdb_daemon( server_sock, line );
+		fputs( reply, stdout );
+        }
+

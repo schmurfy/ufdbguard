@@ -1,0 +1,36 @@
+
+RM      = rm -f
+RUNAS   = @ufdb_user@
+CHOWN   = chown $(RUNAS)
+INSTALL = @INSTALL@ -o $(RUNAS)
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+
+INSTALL_MANPAGE = ./install_man.sh
+
+all update::
+	@echo making $@ in `basename \`pwd\``
+
+clean::
+	@echo making $@ in `basename \`pwd\``
+
+realclean:: clean
+	@echo making $@ in `basename \`pwd\``
+
+distclean:: realclean
+	@echo making $@ in `basename \`pwd\``
+	$(RM) Makefile
+
+apidistclean:
+	@echo making $@ in `basename \`pwd\``
+
+install::
+	@echo making $@ in `basename \`pwd\``
+	$(INSTALL_MANPAGE) ufdbguardd.1 1
+	$(INSTALL_MANPAGE) ufdbgclient.1 1
+	$(INSTALL_MANPAGE) ufdbupdate.1 1
+	$(INSTALL_MANPAGE) ufdbhttpd.1 1
+
+uninstall::
+	@echo making $@ in `basename \`pwd\``
+
