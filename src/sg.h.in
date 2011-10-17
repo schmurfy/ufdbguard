@@ -162,6 +162,8 @@ struct SquidInfo
    char               srcDomain[MAX_BUF];
    char               ident[256];
    char               urlgroup[256];
+   int                proxy_port;
+   char               proxy_address[256];
 };
 
 
@@ -170,6 +172,7 @@ struct sgRewrite {
   int    active;
   struct ufdbRegExp * rewrite;
   struct Time * time;
+  int    proxy_port;
   int    within;
   struct sgRewrite * next;
 };
@@ -332,6 +335,7 @@ void   sgTimeElementClone __P((void));
 
 void   sgSetIpType __P((int, char *, int));
 void   sgIp __P((char *));
+void   sgProxyPort __P((char *));
 struct Ip *sgIpLast __P((struct Source *));
 
 void   sgAcl __P((char *, char *, int));

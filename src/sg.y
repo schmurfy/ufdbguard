@@ -121,7 +121,7 @@ void ufdbFreeDomainDb( struct sgDb * dbp );
 %token SOURCE CIDR IPCLASS CONTINUE
 %token IPADDR DBHOME DOMAINLIST URLLIST EXPRESSIONLIST CACERTS IPLIST
 %token DOMAIN UNIX LDAP USER USERLIST USERQUOTA GROUP 
-%token IP NL NUMBER NUMBERS
+%token IP PORT_NUMBER PROXY_PORT NL NUMBER NUMBERS
 %token PASS REDIRECT SUBST CHAR MINUTELY HOURLY DAILY WEEKLY DATE
 %token REDIRECT_FATAL_ERROR REDIRECT_LOADING_DATABASE
 %token WITHIN OUTSIDE ELSE ANONYMOUS SPORADIC
@@ -490,6 +490,7 @@ source_content:
                 | USERQUOTA NUMBER NUMBER NUMBER { ufdbSourceUserQuota( $2, $3, $4 );  
 		                                   ufdbFree( $2 ); ufdbFree( $3 ); ufdbFree( $4 ); } 
                 | IP ips
+                | PROXY_PORT NUMBER              { sgProxyPort($2); }
                 | IPLIST qidentifier           	 { sgSourceIpList( $2 ); }
                 | IPLIST WORD             	 { sgSourceIpList( $2 ); }
                 | WITHIN qidentifier           	 { sgSourceTime( $2, UFDB_ACL_WITHIN ); }
@@ -866,6 +867,7 @@ void sgSource(
   sp->name = source;
   sp->active = 1;
   sp->ip = NULL;
+  sp->proxy_port = 0;
   sp->lastip = NULL;
   sp->domainDb = NULL;
   sp->userDb = NULL;
@@ -892,7 +894,7 @@ void sgSourceEnd( void )
   struct Source * s;
 
   s = lastSource;
-  if (s->ip == NULL  &&  s->domainDb == NULL  &&  s->userDb == NULL)
+  if (s->ip == NULL  &&  s->domainDb == NULL  &&  s->userDb == NULL && s->proxy_port == NULL)
   {
     ufdbLogError( "source \"%s\" missing active content, set inactive", s->name );
     s->time = NULL;
@@ -1270,7 +1272,7 @@ struct Source * sgFindSource(
 {
   struct Source *    s;
   struct Ip *        ip;
-  int                foundip, founduser, founddomain, unblockeduser;
+  int                foundip, founduser, founddomain, foundport, unblockeduser;
   unsigned long      i, octet, op;
 
   if (UFDBglobalFatalError  ||  UFDBglobalReconfig)
@@ -1298,9 +1300,20 @@ struct Source * sgFindSource(
     if (s->active == 0)
       continue;
 
-    foundip = founduser = founddomain = 0;
+    foundip = founduser = founddomain = foundport = 0;
     unblockeduser = 1;
-
+    
+    if(s->proxy_port != 0){
+      if(s->proxy_port == si->proxy_port){
+        ufdbLogMessage("sgFindSource: proxy port matched");
+        foundport = 1;
+      } 
+    }
+    else {
+      ufdbLogMessage("sgFindSource: no proxy port");
+      foundport = 1;
+    }
+    
     if (s->ip != NULL)
     {
       if (net == NULL)
@@ -1447,7 +1460,7 @@ struct Source * sgFindSource(
     else
       founddomain = 1;
 
-    if (founduser && foundip && founddomain)
+    if (founduser && foundip && founddomain && foundport)
     {
       if (unblockeduser)
 	return s;
@@ -2875,6 +2888,14 @@ void sgIp(
   ufdbLogMessage( "   sgIp %2d  %08lx  %08lx  %s", ip->type, ip->net, ip->mask, ip->str==NULL?"NULL":ip->str );
 #endif
 
+}
+
+void sgProxyPort(char *port)
+{
+  int tmp;
+  tmp = atoi(port);
+  lastSource->proxy_port = tmp;
+  ufdbLogMessage("source port: %d", tmp);
 }
 
 

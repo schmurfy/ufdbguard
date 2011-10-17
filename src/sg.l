@@ -168,6 +168,7 @@ within      	{ return WITHIN; }
 outside     	{ return OUTSIDE; }
 else        	{ return ELSE; }
 ip          	{ return IP; }
+proxy_port      { return PROXY_PORT; }
 {ip}        	{ yylval.string = ufdbStrdup(yytext); return IPADDR; }
 [/]{d}+     	{ yylval.string = ufdbStrdup(yytext+1); return CIDR; }
 [/]{ip}     	{ yylval.string = ufdbStrdup(yytext+1); return IPCLASS; }

@@ -147,6 +147,7 @@ static __inline__ int squeeze_html_char( char * p, int * hex )
  * The URL is normalised/rewritten.
  * Squid pre2.6: http://www.sex.com 10.1.1.44/- - GET
  * Squid 2.6.x:  http://www.sex.com 10.1.1.44/- - GET -    (urlgroup added)
+ * Squid 2.7.x:  http://www.sex.com 10.1.1.44/- - GET myip=127.0.0.1 myport=3200
  */
 int parseLine( 
   UFDBthreadAdmin *  admin, 
@@ -561,19 +562,41 @@ parse2:
       if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)	/* parse method, e.g. GET/CONNECT */
       {
          strcpy( s->method, p );
-	 if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)	/* parse optional urlgroup (new in squid 2.6) */
-	    strcpy( s->urlgroup, p );
-	 else
-	    strcpy( s->urlgroup, "#" );
+         
+         // parse myip
+         if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)
+         {
+            o = strchr(p, '=');	
+            e = strchr(p, '\0');
+            strncpy(s->proxy_address, o+1, e-(o+1));
+            
+            // parse myport
+            if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)
+            {
+              o = strchr(p, '=');
+              s->proxy_port = atoi(o+1);
+            }
+         }
       }
-      else
-	 strcpy( s->urlgroup, "#" );
     }
-  }
-  else
-  {
-     strcpy( s->urlgroup, "#" );
-  }
+   }
+    
+    
+  
+   // no urlgroup in 2.7
+   // if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)  /* parse optional urlgroup (new in squid 2.6) */
+   //    strcpy( s->urlgroup, p );
+   // else
+   //    strcpy( s->urlgroup, "#" );
+   //       }
+   //       else
+   // strcpy( s->urlgroup, "#" );
+   //     }
+   //   }
+   //   else
+   //   {
+   //      strcpy( s->urlgroup, "#" );
+   //   }
 
   if (s->domain[0] == '\0')
     return 0;
