@@ -248,6 +248,7 @@ struct Source
   struct sgDb *     domainDb;
   struct sgDb *     userDb;
   struct Time *     time;
+  int               proxy_port;
   int               within;
   int               cont_search;
   struct UserQuota  userquota;
