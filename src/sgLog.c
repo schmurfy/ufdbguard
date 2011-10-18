@@ -202,43 +202,8 @@ static void ufdbLog(
 
    pthread_mutex_lock( &log_mutex );			/* LOG_MUTEX *******************/
 
-   if (UFDBforceLogRotation)
-   {
-      UFDBforceLogRotation = 0;
-      if (globalErrorLog != NULL)  
-      {
-	 RotateLogfile( UFDBlogFilename );
-	 ufdbSetGlobalErrorLogFile();
-#ifdef UFDB_DEBUG_LOGGING
-         newlog = 1;
-#endif
-      }
-   }
-
-   if (globalErrorLog == NULL) 
-   {
-     fputs( logmsg, stderr );
-     fflush( stderr );
-   }
-   else
-   {
-      if (logfilesize == 0)
-	 logfilesize = ftell( globalErrorLog );
-
-      /* write is *much* faster than fputs */
-      if (write( fileno(globalErrorLog), logmsg, (size_t) logmsglen ) > 0)
-	 logfilesize += logmsglen;
-
-      if (logfilesize > UFDBglobalMaxLogfileSize)
-      {
-	 RotateLogfile( UFDBlogFilename );
-	 ufdbSetGlobalErrorLogFile();
-#ifdef UFDB_DEBUG_LOGGING
-         newlog = 1;
-#endif
-	 logfilesize = 1;
-      }
-   }
+   fputs( logmsg, stderr );
+   fflush( stderr );
 
    pthread_mutex_unlock( &log_mutex );			/* LOG_MUTEX *******************/
 
