@@ -148,6 +148,7 @@ static __inline__ int squeeze_html_char( char * p, int * hex )
  * Squid pre2.6: http://www.sex.com 10.1.1.44/- - GET
  * Squid 2.6.x:  http://www.sex.com 10.1.1.44/- - GET -    (urlgroup added)
  * Squid 2.7.x:  http://www.sex.com 10.1.1.44/- - GET - myip=127.0.0.1 myport=3200
+ * Squid 3.1.x:  http://www.sex.com 10.1.1.44/- - GET myip=127.0.0.1 myport=21001
  */
 int parseLine( 
   UFDBthreadAdmin *  admin, 
@@ -558,7 +559,7 @@ parse2:
 	    *p += 'a' - 'A';
         }
         
-        if (UFDBglobalDebug > 1)
+        if (UFDBglobalDebug)
           ufdbLogMessage("parsed ident: %s", s->ident);
       }
 
@@ -566,36 +567,28 @@ parse2:
       {
          strcpy( s->method, p );
          
-         if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)  /* parse optional urlgroup (new in squid 2.6) */
+         if (UFDBglobalDebug)
+            ufdbLogMessage("parsed method: %s", p);
+         
+         strcpy( s->urlgroup, "#" );
+           
+         // parse myip
+         if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)
          {
-           strcpy( s->urlgroup, p );
-           
-           if (UFDBglobalDebug > 1)
-             ufdbLogMessage("parsed urlgroup: %s", p);
-           
-           // parse myip
-           if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)
-           {
-              o = strchr(p, '=');	
-              e = strchr(p, '\0');
-              strncpy(s->proxy_address, o+1, e-(o+1));
-              if (UFDBglobalDebug > 1)
-                ufdbLogMessage("parsed myip: %s", s->proxy_address);
+            o = strchr(p, '=');	
+            e = strchr(p, '\0');
+            strncpy(s->proxy_address, o+1, e-(o+1));
+            if (UFDBglobalDebug)
+              ufdbLogMessage("parsed myip: %s", s->proxy_address);
 
-              // parse myport
-              if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)
-              {
-                o = strchr(p, '=');
-                s->proxy_port = atoi(o+1);
-                if (UFDBglobalDebug > 1)
-                  ufdbLogMessage("parsed proxy_port: %d", s->proxy_port);
-              }
-           }
-           
-         }
-         else
-         {
-           strcpy( s->urlgroup, "#" );
+            // parse myport
+            if ((p = strtok_r(NULL," \t\n",&lineptr)) != NULL)
+            {
+              o = strchr(p, '=');
+              s->proxy_port = atoi(o+1);
+              if (UFDBglobalDebug)
+                ufdbLogMessage("parsed proxy_port: %d", s->proxy_port);
+            }
          }
          
       }
